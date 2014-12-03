@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="6250" systemVersion="14A389" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES">
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="6244"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <tableViewCell contentMode="scaleToFill" selectionStyle="default" indentationWidth="10" reuseIdentifier="CommentTableViewCell" rowHeight="100" id="6m9-K3-rpu" customClass="CommentTableViewCell">
+            <rect key="frame" x="0.0" y="0.0" width="550" height="100"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+            <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" userInteractionEnabled="NO" contentMode="center" tableViewCell="6m9-K3-rpu" id="g1m-JP-Ewj">
+                <rect key="frame" x="0.0" y="0.0" width="768" height="43"/>
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="@anonDrake" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Yl7-Wt-wPs">
+                        <rect key="frame" x="86" y="-9" width="200" height="44"/>
+                        <fontDescription key="fontDescription" name="GeezaPro" family="Geeza Pro" pointSize="13"/>
+                        <color key="textColor" red="0.023529411760000001" green="0.078431372550000003" blue="0.30196078430000001" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" lineBreakMode="tailTruncation" numberOfLines="2" baselineAdjustment="alignBaselines" minimumFontSize="12" translatesAutoresizingMaskIntoConstraints="NO" id="Udg-CI-k4K">
+                        <rect key="frame" x="86" y="32" width="456" height="35"/>
+                        <string key="text">The last few months, I have been working on a project to treat text on computers as more than just an electronic analogue of paper. The idea is to make text structured and interactive. Text is not just a blob of characters thrown on the paper/screen for reading, but one of many ways communicate. Text is a medium for the conveyance of ideas and these ideas do not stand alone. These thoughts are referenced continually within a workflow.</string>
+                        <fontDescription key="fontDescription" name="GeezaPro" family="Geeza Pro" pointSize="13"/>
+                        <color key="textColor" red="0.52941176469999995" green="0.53333333329999999" blue="0.54901960780000003" alpha="1" colorSpace="calibratedRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="defaultUserBlack" translatesAutoresizingMaskIntoConstraints="NO" id="5XX-Iq-dRj">
+                        <rect key="frame" x="8" y="12" width="70" height="70"/>
+                    </imageView>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="October 29th, 2014  51° 28' 38&quot; N" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Yhh-Mn-a4z">
+                        <rect key="frame" x="294" y="-9" width="300" height="44"/>
+                        <fontDescription key="fontDescription" name="GeezaPro" family="Geeza Pro" pointSize="10"/>
+                        <color key="textColor" red="0.023529411760000001" green="0.078431372550000003" blue="0.30196078430000001" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                </subviews>
+                <color key="backgroundColor" red="0.94901960784313721" green="0.94901960784313721" blue="0.94901960784313721" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            </tableViewCellContentView>
+            <connections>
+                <outlet property="commentText" destination="Udg-CI-k4K" id="rlX-Ul-1bW"/>
+                <outlet property="dateAndCoordinates" destination="Yhh-Mn-a4z" id="NO1-fU-eGq"/>
+                <outlet property="profilePicture" destination="5XX-Iq-dRj" id="ChX-99-Oce"/>
+                <outlet property="userName" destination="Yl7-Wt-wPs" id="tl4-F3-UHq"/>
+            </connections>
+            <point key="canvasLocation" x="240" y="276"/>
+        </tableViewCell>
+    </objects>
+    <resources>
+        <image name="defaultUserBlack" width="512" height="512"/>
+    </resources>
+</document>
