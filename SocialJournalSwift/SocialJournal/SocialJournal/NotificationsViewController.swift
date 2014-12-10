@@ -12,7 +12,8 @@ class NotificationsViewController: UIViewController, UITableViewDataSource, UITa
     
     var button: HamburgerButton! = nil
     var notifications = []
-    
+    var entryToPass = PFObject(className: "Entry")
+
     @IBOutlet weak var tableView: UITableView!
     
     override func viewDidLoad() {
@@ -63,6 +64,18 @@ class NotificationsViewController: UIViewController, UITableViewDataSource, UITa
     
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
         self.tableView.deselectRowAtIndexPath(indexPath, animated: true)
+        self.entryToPass = self.notifications[indexPath.section] as PFObject
+        
+        switch self.entryToPass["type"] as String! {
+        case "follow":
+            self.performSegueWithIdentifier("notificationToProfileView", sender: self)
+        case "like":
+            self.performSegueWithIdentifier("notificationToEntryView", sender: self)
+        case "comment":
+            self.performSegueWithIdentifier("notificationToEntryView", sender: self)
+        default:
+            return
+        }
     }
     
     func numberOfSectionsInTableView(tableView: UITableView) -> Int {
@@ -78,8 +91,16 @@ class NotificationsViewController: UIViewController, UITableViewDataSource, UITa
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         var cell:NotificationTableViewCell = self.tableView.dequeueReusableCellWithIdentifier("notificationCell") as NotificationTableViewCell
         if self.notifications != [] {
-            var activity:PFObject = self.notifications[indexPath.row] as PFObject
-            var fromUser:PFUser = activity["fromUser"].fetchIfNeeded() as PFUser
+            var activity:PFObject = self.notifications[indexPath.section] as PFObject
+            var fromUser:PFUser = activity["fromUser"]as PFUser
+            fromUser.fetchIfNeeded()
+
+            var userImageFile:PFFile? = fromUser["profileImage"] as? PFFile
+            var imageData = userImageFile?.getData()
+            if imageData != nil {
+                cell.fromUserPicture.image = UIImage(data: imageData!)
+            }
+
             switch activity["type"] as String! {
             case "follow":
                 cell.notifcationLabel.text = "\(fromUser.username) is now Following you!"
@@ -91,6 +112,8 @@ class NotificationsViewController: UIViewController, UITableViewDataSource, UITa
                 cell.notifcationLabel.text = "Error: No Comment, Like or Follow detected."
             }
         }
+        
+        
         cell.backgroundColor = UIColor.clearColor()
         return cell
     }
@@ -113,17 +136,18 @@ class NotificationsViewController: UIViewController, UITableViewDataSource, UITa
         return 150
     }
     
-    
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject!) {
-        
-//        if segue.identifier == "feedToEntry"{
-//            var selectedRowIndexPath: NSIndexPath = self.feedTableView.indexPathForSelectedRow()!
-//            var selectedSection: NSInteger = selectedRowIndexPath.section
-//            
-//            let vc = segue.destinationViewController as EntryViewController
-//            vc.entry = self.allEntries[selectedSection] as PFObject
-//        }
+        if segue.identifier == "notificationToProfileView"{
+            let vc = segue.destinationViewController as ProfileViewController
+            vc.currentUser = self.entryToPass["fromUser"] as PFUser
+        }
+        if segue.identifier == "notificationToEntryView"{
+            let vc = segue.destinationViewController as EntryViewController
+            vc.entry = self.entryToPass["entry"].fetchIfNeeded() as PFObject
+        }
+
     }
+
     
 
 

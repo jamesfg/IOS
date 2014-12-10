@@ -106,4 +106,8 @@ class SignInController: UIViewController, UITextFieldDelegate {
         self.view.endEditing(true)
     }
     
+    @IBAction func unwindToSignInController(segue: UIStoryboardSegue) {
+        
+    }
+    
 }

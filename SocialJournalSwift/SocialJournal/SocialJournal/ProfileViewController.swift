@@ -16,6 +16,7 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
     @IBOutlet weak var followButton: UIButton!
     @IBOutlet weak var spinner: UIActivityIndicatorView!
     @IBOutlet weak var theTableView: UITableView!
+    @IBOutlet weak var theSegment: UISegmentedControl!
     
     var button: HamburgerButton! = nil
     
@@ -28,6 +29,18 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        reloadViewData()
+        
+    }
+    
+    override func viewWillAppear(animated: Bool) {
+        reloadViewData()
+        self.theTableView.reloadData()
+        self.theTableView.reloadInputViews()
+    }
+    
+    func reloadViewData() {
+        var userImageFile:PFFile? = nil
         
         if (self.currentUser.objectId == nil){
             self.currentUser = PFUser.currentUser()
@@ -35,16 +48,48 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
         
         self.currentUserName.text = "@" + currentUser.username
         
+        
         if (currentUser.objectId == PFUser.currentUser().objectId){
             self.followButton.hidden = true
         }else{
             self.followButton.hidden = false
+            configureInitialFollowButton()
+            //check to see if follower and adjust button state
         }
+        
+        userImageFile = self.currentUser["profileImage"] as? PFFile
+        if userImageFile != nil {
+            userImageFile!.getDataInBackgroundWithBlock {
+                (imageData: NSData!, error: NSError!) -> Void in
+                if error == nil {
+                    self.currentUserProfilePicture.image = UIImage(data:imageData)
+                }
+                self.currentUserProfilePicture = self.prettifyImage(self.currentUserProfilePicture)
+            }
+        } else {
+            self.currentUserProfilePicture = self.prettifyImage(self.currentUserProfilePicture)
+        }
+        
         
         currentUserProfilePicture = prettifyImage(currentUserProfilePicture)
         setupTheHamburgerIcon()
         setDefaults()
-        
+    }
+    
+    func configureInitialFollowButton() {
+        var query = PFQuery(className: "Activity")
+        query.whereKey("fromUser", equalTo: PFUser.currentUser())
+        query.whereKey("toUser", equalTo: self.currentUser)
+        query.whereKey("type", equalTo: "follow")
+        query.findObjectsInBackgroundWithBlock {
+            (objects: [AnyObject]!, error: NSError!) -> Void in
+            self.spinner.stopAnimating()
+            if error == nil && objects.count > 0 {
+                self.followButton.setTitle("Unfollow", forState: UIControlState.Normal)
+                self.followButton.layer.backgroundColor = UIColor.redColor().CGColor
+            } else {
+            }
+        }
     }
     
     override func didReceiveMemoryWarning() {
@@ -83,12 +128,12 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
         
         theTableView.hidden = true
         theCollectionView.hidden = false
-        fetchAndSetFollowers()
+        theSegment.selectedSegmentIndex = 0
+        fetchAndSetFollowing()
     }
     
     func fetchAndSetFollowers() {
-        self.spinner.center = self.view.center
-        self.spinner.startAnimating()
+        setAndStartTheSpinner()
         var query = ParseQueries.queryForFollowers(self.currentUser)
         query.findObjectsInBackgroundWithBlock {
             (objects: [AnyObject]!, error: NSError!) -> Void in
@@ -104,8 +149,7 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
     }
     
     func fetchAndSetFollowing() {
-        self.spinner.center = self.view.center
-        self.spinner.startAnimating()
+        setAndStartTheSpinner()
         var query = ParseQueries.queryForFollowing(self.currentUser)
         query.findObjectsInBackgroundWithBlock {
             (objects: [AnyObject]!, error: NSError!) -> Void in
@@ -121,8 +165,7 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
     }
     
     func fetchAndSetMyEntriesTable() {
-        self.spinner.center = self.view.center
-        self.spinner.startAnimating()
+        setAndStartTheSpinner()
         var query = ParseQueries.queryForMyEntries(self.currentUser)
         query.findObjectsInBackgroundWithBlock {
             (objects: [AnyObject]!, error: NSError!) -> Void in
@@ -136,16 +179,28 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
         }
     }
     
+    func setAndStartTheSpinner(){
+        self.spinner.center = self.view.center
+        self.spinner.startAnimating()
+    }
+    
+    func setTheCollectionViewToBeEmpty(){
+        currentCollectionViewDataArray = []
+        theCollectionView.reloadData()
+    }
+    
     @IBAction func segmentClicked(sender: UISegmentedControl) {
         switch sender.selectedSegmentIndex {
         case 0:
             theTableView.hidden = true
-            theCollectionView.hidden = false
-            fetchAndSetFollowers()
-        case 1:
-            theTableView.hidden = true
+            setTheCollectionViewToBeEmpty()
             theCollectionView.hidden = false
             fetchAndSetFollowing()
+        case 1:
+            theTableView.hidden = true
+            setTheCollectionViewToBeEmpty()
+            theCollectionView.hidden = false
+            fetchAndSetFollowers()
         case 2:
             theTableView.hidden = false
             theCollectionView.hidden = true
@@ -177,9 +232,29 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
             }else{
                 eachUser = eachObject["toUser"] as PFObject
             }
-            var actualUser:PFUser = eachUser.fetchIfNeeded() as PFUser
-            cell.userNameLabel.text = actualUser.username
+            
+            eachUser.fetchIfNeededInBackgroundWithBlock {
+                (object: PFObject!, error: NSError!) -> Void in
+                if error == nil {
+                    cell.userNameLabel.text = object["username"] as String!
+                    
+                    var userImageFile:PFFile? = object["profileImage"] as? PFFile
+                    userImageFile?.getDataInBackgroundWithBlock{
+                        (imageData: NSData!, error: NSError!) -> Void in
+                        if !(error != nil) {
+                            if imageData != nil {
+                                cell.userProfilePicture.image = UIImage(data: imageData!)
+                            }
+                        }
+                    }
+                    
+                } else {
+                    NSLog("Error: %@ %@", error, error.userInfo!)
+                }
+                
+            }
         }
+        
         cell.layer.cornerRadius = 6
         cell.layer.borderWidth = 1.0
         cell.layer.borderColor = UIColor.lightGrayColor().CGColor;
@@ -231,22 +306,46 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
             var dateStringMonth: NSString = month.stringFromDate(entry.createdAt)
             var dateStringYear: NSString = year.stringFromDate(entry.createdAt)
             
-            cell.username.text = "anonDawg"
-            //        cell.userProfilePicture.image =
+            cell.username.text = self.currentUser.username
+            var query = PFQuery(className: "Activity")
+            query.whereKey("entry", equalTo: entry)
+            query.whereKey("fromUser", equalTo: self.currentUser)
+            query.whereKey("type", equalTo: "like")
+
             
-            //        if(favorited) {
-            //            cell.hearted.image =
-            //        }
+            // Turn into async calls
+            var likes = query.findObjects()
+            
+            if likes.count > 0 {
+                cell.hearted.tintColor = UIColor.redColor()
+                cell.hearted.image = UIImage(named: "HeartRed")
+            }
             var entryTitle:String = entry["title"] as String!
             var entryText:String = entry["content"] as String!
             
+            // Turn into async calls
             cell.heartCount.text = String(ParseQueries.getHeartCountForEntry(entry))
+            
+            
+            
             cell.postTitle.text = entryTitle
             cell.postBody.text = entryText
             cell.dateWeekday.text = dateStringWeekday
             cell.dateDay.text = dateStringDay
             cell.dateMonth.text = dateStringMonth
             cell.dateYear.text = dateStringYear
+            
+            //set image
+            var userImageFile:PFFile? = self.currentUser["profileImage"] as? PFFile
+            userImageFile?.getDataInBackgroundWithBlock{
+                (imageData: NSData!, error: NSError!) -> Void in
+                if !(error != nil) {
+                    if imageData != nil {
+                        cell.userProfilePicture.image = UIImage(data: imageData!)
+                    }
+                }
+            }
+            
             
         }
         
@@ -277,7 +376,7 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         if (segue.identifier == "goToProfileFromCollectionCell"){
             
-            let indexPaths : NSArray = self.theCollectionView.indexPathsForSelectedItems()!
+            let indexPaths : NSArray = self.theCollectionView.indexPathsForSelectedItems()
             let indexPath : NSIndexPath = indexPaths[0] as NSIndexPath
             
             var eachObject: PFObject = currentCollectionViewDataArray[indexPath.row] as PFObject
@@ -303,13 +402,35 @@ class ProfileViewController: UIViewController, UICollectionViewDataSource, UICol
     }
     
     @IBAction func followButtonClicked(sender: UIButton) {
-        // Set the button so it says unfollow
+
+        
         if(sender.titleForState(UIControlState.Normal) == "Follow"){
             sender.setTitle("Unfollow", forState: UIControlState.Normal)
             sender.layer.backgroundColor = UIColor.redColor().CGColor
+            
+            //follow the user
+            var newFollow = PFObject(className: "Activity")
+            newFollow["fromUser"] = PFUser.currentUser()
+            newFollow["toUser"] = self.currentUser
+            newFollow["type"] = "follow"
+            newFollow.saveInBackground()
         }else{
             sender.setTitle("Follow", forState: UIControlState.Normal)
             sender.layer.backgroundColor = UIColor(red: 39.0/255, green: 154.0/255, blue: 216.0/255, alpha: 1.0).CGColor
+            
+            //unfollow the user
+            var query = PFQuery(className: "Activity")
+            query.whereKey("fromUser", equalTo: PFUser.currentUser())
+            query.whereKey("toUser", equalTo: self.currentUser)
+            query.findObjectsInBackgroundWithBlock {
+                (objects: [AnyObject]!, error: NSError!) -> Void in
+                self.spinner.stopAnimating()
+                if error == nil && objects.count > 0 {
+                    objects[0].deleteEventually()
+                } else {
+                    NSLog("Error: %@ %@", error, error.userInfo!)
+                }
+            }
         }
     }
     

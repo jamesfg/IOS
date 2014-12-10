@@ -42,6 +42,7 @@ class ComposeViewController: UIViewController, CLLocationManagerDelegate, UINavi
     @IBOutlet weak var removeImageButton: UIButton!
     
     var currentEntry = PFObject(className: "Entry")
+    var virtualNameDictionary = Dictionary<String,String>()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -74,41 +75,82 @@ class ComposeViewController: UIViewController, CLLocationManagerDelegate, UINavi
         
         dateFormatter.dateFormat = "yyyy"
         self.yearLabel.text = dateFormatter.stringFromDate(NSDate())
+        
+        var userImageFile:PFFile? = nil
+        
+        userImageFile = PFUser.currentUser()["profileImage"] as? PFFile
+        if userImageFile != nil {
+            userImageFile!.getDataInBackgroundWithBlock {
+                (imageData: NSData!, error: NSError!) -> Void in
+                if error == nil {
+                    self.profilePictureImageView.image = UIImage(data:imageData)
+                }
+                self.profilePictureImageView = self.prettifyImage(self.profilePictureImageView)
+            }
+        }
+        
        
+        getVirtualNamesFromNSUserDefaults()
         // Do any additional setup after loading the view.
     }
+    
+    func prettifyImage(imageViewToModify: UIImageView) -> UIImageView{
+        imageViewToModify.layer.cornerRadius = self.profilePictureImageView.frame.size.width / 2;
+        imageViewToModify.clipsToBounds = true;
+        imageViewToModify.layer.borderWidth = 1.0
+        imageViewToModify.layer.borderColor = UIColor.whiteColor().CGColor;
+        return imageViewToModify
+    }
+    
+    func getVirtualNamesFromNSUserDefaults(){
+        var userDefaults = NSUserDefaults.standardUserDefaults()
+        if let virtualNames = userDefaults.objectForKey("virtualNamesDictionary") as? Dictionary<String,String>{
+            self.virtualNameDictionary = virtualNames
+            //println(virtualNames)
+        }
+    }
+    
+    func replaceVirtualNames(text:String) -> String{
+        var result = text
+        for(key,value) in self.virtualNameDictionary{
+            result = text.stringByReplacingOccurrencesOfString(key, withString: value, options: NSStringCompareOptions.LiteralSearch, range: nil)
+        }
+        //println(result)
+        return result as String
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
     
     func getTagsFromTitleAndContent() -> Array<String> {
-            //get the tags here, if no tags return an empty array ... not nil
-            var result = [String]();
+        //get the tags here, if no tags return an empty array ... not nil
+        var result = [String]();
     
-            //initialize the arrays
-            var titleTags = self.titleTextField.text.componentsSeparatedByString(" ")
-            var contentTags = self.contentTextView.text.componentsSeparatedByString(" ")
-            var allTags = titleTags + contentTags
+        //initialize the arrays
+        var titleTags = self.titleTextField.text.componentsSeparatedByString(" ")
+        var contentTags = self.contentTextView.text.componentsSeparatedByString(" ")
+        var allTags = titleTags + contentTags
     
-            var tagDictionary = [String: Int]()
+        var tagDictionary = [String: Int]()
     
-            for word in allTags{
-        if countElements(word) != 0{
-                    var temp = (word as NSString).substringToIndex(1)
-                    if (temp == "#" && countElements(word) > 1 &&
-                        word.substringFromIndex(advance(word.startIndex, 1)).rangeOfString("#") == nil &&
-                        tagDictionary[word] == nil){
-    
+        for word in allTags{
+            if countElements(word) != 0{
+                var temp = (word as NSString).substringToIndex(1)
+            
+                if (temp == "#" && countElements(word) > 1 &&
+                    word.substringFromIndex(advance(word.startIndex, 1)).rangeOfString("#") == nil &&
+                    tagDictionary[word] == nil){
                         tagDictionary[word] = allTags.count
-                           result.append(word);
+                        result.append(word)
                         //println(word)
-                    }
                 }
             }
-               //println(result)
-               return result;
         }
+        //println(result)
+        return result;
+    }
     
     func saveTagsFromPost(entry:PFObject, tags:Array<String>) {
         let tags = getTagsFromTitleAndContent()
@@ -129,7 +171,7 @@ class ComposeViewController: UIViewController, CLLocationManagerDelegate, UINavi
     
                         newTagMapEntry["entry"] = entry
                         newTagMapEntry["tag"] = newTag
-                            newTagMapEntry.saveEventually()
+                        newTagMapEntry.saveEventually()
                     } else {
                         var newTagMapEntry = PFObject(className: "TagMap")
     
@@ -156,34 +198,60 @@ class ComposeViewController: UIViewController, CLLocationManagerDelegate, UINavi
     }
     
     @IBAction func postNewEntry(sender: AnyObject) {
-        //var newEntry = PFObject(className: "Entry")
-        self.currentEntry["content"] = self.contentTextView.text
-        self.currentEntry["user"] = PFUser.currentUser()
-        self.currentEntry["title"] = self.titleTextField.text
         
-        self.currentEntry["location"] = PFGeoPoint(latitude:NSString(string: self.locationManager.location.coordinate.latitude.description).doubleValue, longitude:NSString(string: self.locationManager.location.coordinate.longitude.description).doubleValue)
-        
-        self.currentEntry.saveInBackgroundWithBlock{
-            (success: Bool!, error:NSError!) -> Void in
+        if self.titleTextField.text != "" && self.contentTextView.text != ""{
+            self.currentEntry["user"] = PFUser.currentUser()
+            self.currentEntry["content"] = self.replaceVirtualNames(self.contentTextView.text)
+            self.currentEntry["title"] = self.replaceVirtualNames(self.titleTextField.text)
             
-            if success! {
-                var query = PFQuery(className:"Entry")
-                query.getObjectInBackgroundWithId(self.currentEntry.objectId) {
-                    (entry: PFObject!, error: NSError!) -> Void in
-                    if error == nil {
-                        self.currentEntry = entry
-                        //Preform segue here
-                        self.performSegueWithIdentifier("composeToEntryView", sender: sender)
-                    } else {
-                        println(error)
-                    }
-                }
-            } else {
-                println("error")
+            //check to make sure location isnt nil
+            if self.locationManager.location == nil{
+                self.currentEntry["location"] = PFGeoPoint(latitude: 0.0, longitude: 0.0)
+            }else{
+                self.currentEntry["location"] = PFGeoPoint(latitude:NSString(string: self.locationManager.location.coordinate.latitude.description).doubleValue, longitude:NSString(string: self.locationManager.location.coordinate.longitude.description).doubleValue)
             }
+            
+            //
+            
+            if self.mediaImageView.image != nil {
+                let imageData = UIImageJPEGRepresentation(self.mediaImageView.image, 0.05)
+                let imageFile = PFFile(name: "image.jpg", data: imageData)
+                self.currentEntry["image"] = imageFile
+            }
+            
+            self.currentEntry.saveInBackgroundWithBlock{
+                (success: Bool!, error:NSError!) -> Void in
+                
+                if success! {
+                    var query = PFQuery(className:"Entry")
+                    query.getObjectInBackgroundWithId(self.currentEntry.objectId) {
+                        (entry: PFObject!, error: NSError!) -> Void in
+                        if error == nil {
+                            self.currentEntry = entry
+                            //Preform segue here
+                            self.performSegueWithIdentifier("composeToEntryView", sender: sender)
+                        } else {
+                            //if failure, give an alert
+                            let alertController = UIAlertController(title: "Oops!", message:
+                                "Something went wrong, we were unable to process your new post.", preferredStyle: UIAlertControllerStyle.Alert)
+                            alertController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertActionStyle.Default,handler: nil))
+                            self.presentViewController(alertController, animated: true, completion: nil)
+                        }
+                    }
+                } else {
+                    //if failure, give an alert
+                    let alertController = UIAlertController(title: "Oops!", message:
+                        "Something went wrong, we were unable to process your new post.", preferredStyle: UIAlertControllerStyle.Alert)
+                    alertController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertActionStyle.Default,handler: nil))
+                    self.presentViewController(alertController, animated: true, completion: nil)
+                }
+            }
+        }else { // if either the title or content is empty
+            let alertController = UIAlertController(title: "Incomplete Post", message: "Please make sure the Title and Content are not empty.", preferredStyle: UIAlertControllerStyle.Alert)
+            alertController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertActionStyle.Default,handler: nil))
+            self.presentViewController(alertController, animated: true, completion: nil)
         }
     }
-    
     func toggle(sender: AnyObject!) {
         self.button.showsMenu = !self.button.showsMenu
     }
@@ -221,6 +289,7 @@ class ComposeViewController: UIViewController, CLLocationManagerDelegate, UINavi
         if segue.identifier == "composeToEntryView"{
             let vc = segue.destinationViewController as EntryViewController
             vc.entry = self.currentEntry as PFObject
+            vc.navigationItem.setHidesBackButton(true, animated: true)
         }
     }
 
